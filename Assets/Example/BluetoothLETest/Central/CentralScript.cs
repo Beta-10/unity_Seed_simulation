@@ -62,13 +62,14 @@ public class CentralScript : MonoBehaviour
 			// after that only the second callback will get called and only if there is
 			// advertising data available
 			BluetoothLEHardwareInterface.ScanForPeripheralsWithServices (null, (address, name) => {
-
+				//if(name.Contains("Seed") {
+					
 				AddPeripheral (name, address);
 
 			}, (address, name, rssi, advertisingInfo) => {
 
 				if (advertisingInfo != null)
-					BluetoothLEHardwareInterface.Log (string.Format ("Device: {0} RSSI: {1} Data Length: {2} Bytes: {3}", name, rssi, advertisingInfo.Length, BytesToString (advertisingInfo)));
+					Debug.Log (string.Format ("Device: {0} RSSI: {1} Data Length: {2} Bytes: {3}", name, rssi, advertisingInfo.Length, BytesToString (advertisingInfo)));
 			});
 
 			TextScanButton.text = "Stop Scan";

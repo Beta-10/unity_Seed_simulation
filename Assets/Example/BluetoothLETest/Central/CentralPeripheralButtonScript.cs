@@ -21,7 +21,7 @@ public class CentralPeripheralButtonScript : MonoBehaviour
 			PanelCentralTISensorTag.Initialize (this);
 			BLETestScript.Show (PanelCentralTISensorTag.transform);
 		}
-		else if (TextName.text.Contains ("Adafruit Bluefruit LE"))
+		else if (TextName.text.Contains ("Seed"))
 		{
 			PanelCentralNordic.Initialize ();
 			BLETestScript.Show (PanelCentralNordic.transform);

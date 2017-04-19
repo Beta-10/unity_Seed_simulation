@@ -22,9 +22,13 @@ public class CentralNordicScript : MonoBehaviour
 	private float _subscribingTimeout = 0f;
 	private bool _readFound = false;
 	private bool _writeFound = false;
-	private string device_address = "E4:72:2B:5E:4E:A3";
+	private string _deviceID = "E4:72:2B:5E:4E:A3";
+
+	private float[] floatData;
+	private Vector3 rotate_data;
 
 	bool _connected = false;
+	bool _scanning = false;
 	bool Connected
 	{
 		get { return _connected; }
@@ -48,7 +52,9 @@ public class CentralNordicScript : MonoBehaviour
 	
 	public void Initialize ()
 	{
-		Connected = false;
+		Debug.Log ("Initialize\r\n");
+
+
 	}
 	
 	void disconnect (Action<string> action)
@@ -58,6 +64,7 @@ public class CentralNordicScript : MonoBehaviour
 
 	public void OnSend ()
 	{
+		Debug.Log ("OnSend\r\n");
 		///if (Send.text.Length > 0)
 		//{
 			//byte[] bytes = ASCIIEncoding.UTF8.GetBytes (Send.text);
@@ -84,39 +91,46 @@ public class CentralNordicScript : MonoBehaviour
 	
 	public void OnConnect ()
 	{
+		Debug.Log ("OnConnect\r\n");
 		if (!_connecting)
 		{
+			Debug.Log ("_connecting\r\n");
 			if (Connected)
 			{
+				Debug.Log ("Already connected\r\n");
 				disconnect ((Address) => {
 					Connected = false;
 				});
 			}
 			else
 			{
+				Debug.Log ("attempt to connect\r\n");
 				_readFound = false;
 				_writeFound = false;
 
-				BluetoothLEHardwareInterface.ConnectToPeripheral (device_address, (address) => {
+				BluetoothLEHardwareInterface.ConnectToPeripheral (_deviceID, (address) => {
 				},
 				(address, serviceUUID) => {
 				},
 				(address, serviceUUID, characteristicUUID) => {
-					
+						Debug.Log ("serviceUUID" + serviceUUID + "\r\n");
 					// discovered characteristic
 					if (IsEqual(serviceUUID, _serviceUUID))
 					{
+							
 						_connectedID = address;
 						
 						Connected = true;
-
+						
 						if (IsEqual (characteristicUUID, _readCharacteristicUUID))
 						{
 							_readFound = true;
+								Debug.Log ("_readFound\r\n");
 						}
 						else if (IsEqual (characteristicUUID, _writeCharacteristicUUID))
 						{
 							_writeFound = true;
+								Debug.Log ("_writeFound\r\n");
 						}
 					}
 				}, (address) => {
@@ -136,13 +150,55 @@ public class CentralNordicScript : MonoBehaviour
 	// Use this for initialization
 	void Start ()
 	{
-		Debug.Log ("NRF Devices connected\r\n");
-		OnConnect ();
+		Debug.Log ("Start\r\n");
+		Connected = false;
+
+		BluetoothLEHardwareInterface.Initialize (true, false, () => {
+			OnScan ();
+		}, (error) => {
+			
+		});
+
+		//OnConnect ();
 	}
-	
+	public void OnScan ()
+	{
+
+		if (_scanning) {
+			BluetoothLEHardwareInterface.StopScan ();
+
+			_scanning = false;
+		} 
+		else 
+		{
+			BluetoothLEHardwareInterface.ScanForPeripheralsWithServices (null, (address, name) => {
+
+				//AddPeripheral (name, address);
+
+				//Debug.Log(string.Format ("Device: {0} address: {1} ", name, address));
+
+				if (name.Contains("Seed")) {
+					_scanning = true;
+					Debug.Log("PairKey Found");
+					OnConnect();
+				}
+
+			}, (address, name, rssi, advertisingInfo) => {
+
+				//if (advertisingInfo != null)
+				//Debug.Log (string.Format ("Device: {0} RSSI: {1} Data Length: {2} ", name, rssi, advertisingInfo.Length));
+			});
+
+		}
+			
+			
+
+
+	}
 	// Update is called once per frame
 	void Update ()
 	{
+		//Debug.Log ("Update()\r\n");
 		if (_readFound && _writeFound)
 		{
 			_readFound = false;
@@ -165,15 +221,36 @@ public class CentralNordicScript : MonoBehaviour
 					BluetoothLEHardwareInterface.Log ("id: " + _connectedID);
 					if (deviceAddress2.CompareTo (_connectedID) == 0)
 					{
-						Debug.Log (string.Format ("data length: {0}", data.Length));
+						//Debug.Log (string.Format ("data length: {0}", data.Length));
 						if (data.Length == 0)
 						{
 						}
 						else
 						{
-							string s = ASCIIEncoding.UTF8.GetString (data);
-							Debug.Log (s);
-							//Receive.text += s;
+							//string s = ASCIIEncoding.UTF8.GetString (data);
+							//Debug.Log (s);
+
+
+							var acc_x = (short)(data[0] << 8 | data[1]);
+							var acc_y = (short)(data[2] << 8 | data[3]);
+							var acc_z = (short)(data[4] << 8 | data[5]);
+							Debug.Log (string.Format ("acc_x: {0} ", acc_x));
+							Debug.Log (string.Format ("acc_y: {0} ", acc_y));
+							Debug.Log (string.Format ("acc_z: {0} ", acc_z));
+
+							double pitch = Math.Atan(acc_x/Math.Sqrt(Mathf.Pow(acc_y,2) + Mathf.Pow(acc_z,2)));
+							double roll = Math.Atan(acc_y/Math.Sqrt(Mathf.Pow(acc_x,2) + Mathf.Pow(acc_z,2)));
+
+
+							rotate_data.x = (float)pitch * 180 / Mathf.PI;
+							rotate_data.y = (float)roll * 180 / Mathf.PI;
+							rotate_data.z = 0.0F;
+
+							Debug.Log (string.Format ("acc_x: {0} ", rotate_data.x));
+							Debug.Log (string.Format ("acc_y: {0} ", rotate_data.y));
+
+							Quaternion target = Quaternion.Euler (rotate_data.x, 0.0F, rotate_data.y);
+							transform.rotation = target;
 						}
 					}
 					
@@ -183,7 +260,16 @@ public class CentralNordicScript : MonoBehaviour
 			}
 		}
 	}
-	
+	protected string BytesToString (byte[] bytes)
+	{
+		string result = "";
+
+		foreach (var b in bytes)
+			result += b.ToString ("X2");
+
+		return result;
+	}
+
 	string FullUUID (string uuid)
 	{
 		return "6E40" + uuid + "-B5A3-F393-E0A9-E50E24DCCA9E";
