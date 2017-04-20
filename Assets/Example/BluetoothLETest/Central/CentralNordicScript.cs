@@ -22,7 +22,12 @@ public class CentralNordicScript : MonoBehaviour
 	private float _subscribingTimeout = 0f;
 	private bool _readFound = false;
 	private bool _writeFound = false;
-	private string _deviceID = "E4:72:2B:5E:4E:A3";
+
+	#if UNITY_ANDROID
+		private string _deviceID = "E4:72:2B:5E:4E:A3";
+	#else
+		private string _deviceID = "9480DDC6-F94E-4B0D-837C-F48C49AC8C39";
+	#endif
 
 	private float[] floatData;
 	private Vector3 rotate_data;
